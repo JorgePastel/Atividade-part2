@@ -1,0 +1,155 @@
+import mysql.connector
+from mysql.connector import Error
+
+class ConexaoBancoDados:
+    def __init__(self):
+        self.conexao = None
+        self.cursor = None
+    
+    def conectar(self):
+        """Estabelece conexão com o banco de dados"""
+        try:
+            self.conexao = mysql.connector.connect(
+                host='localhost',
+                user='root',
+                password='1234',
+                database='bd_aulaIPE'
+            )
+            
+            if self.conexao.is_connected():
+                print("Conexão ao MySQL estabelecida com sucesso!")
+                self.cursor = self.conexao.cursor()
+                return True
+                
+        except Error as e:
+            print(f"Erro ao conectar ao MySQL: {e}")
+            return False
+    
+    def desconectar(self):
+        """Fecha a conexão com o banco de dados"""
+        if self.conexao and self.conexao.is_connected():
+            self.cursor.close()
+            self.conexao.close()
+            print("Conexão ao MySQL encerrada.")
+    
+    def criar_tabela(self):
+        """Cria a tabela tb_produtos se não existir"""
+        try:
+            sql = """
+            CREATE TABLE IF NOT EXISTS tb_produtos(
+                id_produto INT AUTO_INCREMENT PRIMARY KEY,
+                nm_produto VARCHAR(90) NOT NULL,
+                vl_produto DECIMAL(10,2) NOT NULL
+            )
+            """
+            self.cursor.execute(sql)
+            print("Tabela 'tb_produtos' verificada/criada com sucesso!")
+            
+        except Error as e:
+            print(f"Erro ao criar tabela: {e}")
+    
+    def inserir_produto(self, nome, preco):
+        """Insere um novo produto na tabela"""
+        try:
+            sql = "INSERT INTO tb_produtos (nm_produto, vl_produto) VALUES (%s, %s)"
+            valores = (nome, preco)
+            self.cursor.execute(sql, valores)
+            self.conexao.commit()
+            print(f"{self.cursor.rowcount} registro inserido: {nome} - R$ {preco}")
+            
+        except Error as e:
+            print(f"Erro ao inserir produto: {e}")
+    
+    def atualizar_produto(self, nome, novo_preco):
+        """Atualiza o preço de um produto"""
+        try:
+            sql = "UPDATE tb_produtos SET vl_produto = %s WHERE nm_produto = %s"
+            valores = (novo_preco, nome)
+            self.cursor.execute(sql, valores)
+            self.conexao.commit()
+            print(f"Produto '{nome}' atualizado para R$ {novo_preco}")
+            
+        except Error as e:
+            print(f"Erro ao atualizar produto: {e}")
+    
+    def excluir_produto(self, nome):
+        """Exclui um produto pelo nome"""
+        try:
+            sql = "DELETE FROM tb_produtos WHERE nm_produto = %s"
+            valores = (nome,)
+            self.cursor.execute(sql, valores)
+            self.conexao.commit()
+            print(f"Produto '{nome}' excluído com sucesso!")
+            
+        except Error as e:
+            print(f"Erro ao excluir produto: {e}")
+    
+    def consultar_produtos(self):
+        """Consulta e exibe todos os produtos"""
+        try:
+            sql = "SELECT * FROM tb_produtos"
+            self.cursor.execute(sql)
+            resultados = self.cursor.fetchall()
+            
+            print("\n--- PRODUTOS CADASTRADOS ---")
+            if resultados:
+                for produto in resultados:
+                    print(f"ID: {produto[0]} | Nome: {produto[1]} | Preço: R$ {produto[2]}")
+            else:
+                print("Nenhum produto cadastrado.")
+            print("----------------------------\n")
+            
+        except Error as e:
+            print(f"Erro ao consultar produtos: {e}")
+
+def main():
+    db = ConexaoBancoDados()
+    
+    if not db.conectar():
+        return
+    
+    db.criar_tabela()
+    
+    while True:
+        print("\n SISTEMA DE GERENCIAMENTO DE PRODUTOS ")
+        print("1 - Inserir produto")
+        print("2 - Consultar produtos")
+        print("3 - Atualizar produto")
+        print("4 - Excluir produto")
+        print("5 - Sair")
+        
+        opcao = input("Escolha uma opção: ")
+        
+        if opcao == '1':
+            nome = input("Nome do produto: ")
+            try:
+                preco = float(input("Preço do produto: "))
+                db.inserir_produto(nome, preco)
+            except ValueError:
+                print("Erro: Digite um valor numérico para o preço!")
+        
+        elif opcao == '2':
+            db.consultar_produtos()
+        
+        elif opcao == '3':
+            nome = input("Nome do produto a ser atualizado: ")
+            try:
+                novo_preco = float(input("Novo preço: "))
+                db.atualizar_produto(nome, novo_preco)
+            except ValueError:
+                print("Erro: Digite um valor numérico para o preço!")
+        
+        elif opcao == '4':
+            nome = input("Nome do produto a ser excluído: ")
+            db.excluir_produto(nome)
+        
+        elif opcao == '5':
+            break
+        
+        else:
+            print("Opção inválida! Tente novamente.")
+    
+    db.desconectar()
+
+if __name__ == "__main__":
+    main()
